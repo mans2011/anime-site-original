@@ -12,8 +12,9 @@
   <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@latest/dist/js/splide.min.js" defer></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script defer src="script.js"></script>
   <script defer src="anime-carrossel.js"></script>
+  <script type="module" src="script.js"></script>
+  <script type="module" src="resultado.js"></script>
 </head>
 
 <body>
@@ -25,7 +26,7 @@
         <ul>
           <li><a href="index.html">Animes</a></li>
           <li class="dropdown">
-            <a href="#">Gêneros ▾</a>
+            <a href="#" id="btn-generos">Gêneros ▾</a>
             <ul class="submenu-generos"></ul>
           </li>
           <li><a href="#">Temporadas</a></li>

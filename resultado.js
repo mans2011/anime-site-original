@@ -1,4 +1,3 @@
-// 🔄 Aguarda o carregamento do DOM
 document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
   const genero = params.get("genero");
@@ -7,103 +6,180 @@ document.addEventListener("DOMContentLoaded", () => {
   const titulo = document.getElementById("titulo-resultado");
   const lista = document.getElementById("resultado-list");
 
+  const TMDB_API_KEY = "7d779743f4eacd1de7ffc7882da6d63f";
+
+  const mapaGeneros = {
+    "Ação": 1, "Aventura": 2, "Comédia": 4, "Drama": 8,
+    "Fantasia": 10, "Horror": 14, "Mecha": 18, "Música": 19,
+    "Mistério": 7, "Romance": 22, "Ficção Científica": 24,
+    "Slice of Life": 36, "Esportes": 30, "Sobrenatural": 37,
+    "Suspense": 41
+  };
+
+  let watchlist = [];
+  if (sessionStorage.getItem("watchlist")) {
+    watchlist = JSON.parse(sessionStorage.getItem("watchlist"));
+  }
+
   if (genero) {
     titulo.textContent = `🎭 Gênero: ${genero}`;
     buscarPorGenero(genero);
   } else if (busca) {
     titulo.textContent = `🔍 Busca: ${busca}`;
-    buscarPorNome(busca);
+    iniciarBuscaComDebounce(busca);
   }
 
-  // 🔎 Busca por gênero
-  async function buscarPorGenero(gen) {
-    const query = `
-      query ($genre: String) {
-        Page(perPage: 20) {
-          media(genre_in: [$genre], type: ANIME, sort: POPULARITY_DESC) {
-            id
-            title { romaji english }
-            coverImage { large }
-            averageScore
-            genres
-          }
+  function iniciarBuscaComDebounce(busca) {
+    let timer;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      buscarPorNomeTMDB(busca);
+    }, 400);
+  }
+
+  async function obterSinopseTMDB(titulos) {
+    for (const nome of titulos) {
+      const resBusca = await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(nome)}&language=pt-BR`);
+      const json = await resBusca.json();
+      const serie = json.results?.[0];
+      if (serie) {
+        const detalhes = await fetch(`https://api.themoviedb.org/3/tv/${serie.id}?api_key=${TMDB_API_KEY}&language=pt-BR`)
+          .then(r => r.json());
+        if (detalhes.overview?.trim()) {
+          return detalhes.overview;
         }
       }
-    `;
-    const json = await consultarAniList(query, { genre: gen });
-    mostrarResultados(json?.data?.Page?.media);
+    }
+    return null;
   }
 
-  // 🔎 Busca por nome
-  async function buscarPorNome(nome) {
-    const query = `
-      query ($search: String) {
-        Page(perPage: 20) {
-          media(search: $search, type: ANIME, sort: POPULARITY_DESC) {
-            id
-            title { romaji english }
-            coverImage { large }
-            averageScore
-            genres
-          }
+  async function buscarPorNomeTMDB(nome) {
+    lista.innerHTML = "<p>🔄 Buscando animes...</p>";
+
+    const urlBusca = `https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(nome)}&language=pt-BR`;
+
+    try {
+      const resBusca = await fetch(urlBusca);
+      const jsonBusca = await resBusca.json();
+      const resultados = jsonBusca.results;
+
+      if (!resultados || resultados.length === 0) {
+        lista.innerHTML = "<p>Nenhum resultado encontrado na TMDB.</p>";
+        return;
+      }
+
+      lista.innerHTML = "";
+
+      for (const item of resultados) {
+        const tmdbId = item.id;
+        const urlDetalhes = `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${TMDB_API_KEY}&language=pt-BR`;
+
+        try {
+          const detalhesRes = await fetch(urlDetalhes);
+          const detalhes = await detalhesRes.json();
+
+          const nomeAnime = detalhes.name || item.name;
+          const sinopse = detalhes.overview || "Sinopse não disponível.";
+          const sinopseCurta = sinopse.length > 140 ? sinopse.substring(0, 137) + "..." : sinopse;
+          const nota = detalhes.vote_average ?? "N/A";
+          const imagem = detalhes.poster_path ? `https://image.tmdb.org/t/p/w500${detalhes.poster_path}` : "default.jpg";
+          const jaSalvo = watchlist.includes(tmdbId);
+
+          const card = document.createElement("div");
+          card.classList.add("anime-card");
+          card.innerHTML = `
+            <img src="${imagem}" alt="${nomeAnime}">
+            <h3>${nomeAnime}</h3>
+            <p>${sinopseCurta}</p>
+            <p>⭐ Nota: ${nota}</p>
+            <button class="btn-watchlist-icon ${jaSalvo ? 'ativo' : ''}" data-id="${tmdbId}" data-title="${nomeAnime}">
+              ${jaSalvo ? "✅" : "➕"}
+            </button>
+          `;
+
+          const btn = card.querySelector(".btn-watchlist-icon");
+          btn.addEventListener("click", e => {
+            e.preventDefault();
+            if (!watchlist.includes(tmdbId)) {
+              watchlist.push(tmdbId);
+              sessionStorage.setItem("watchlist", JSON.stringify(watchlist));
+              btn.classList.add("ativo");
+              btn.textContent = "✅";
+            }
+          });
+
+          lista.appendChild(card);
+        } catch {
+          console.warn(`❌ Erro ao buscar detalhes do ID ${tmdbId}`);
         }
       }
-    `;
-    const json = await consultarAniList(query, { search: nome });
-    mostrarResultados(json?.data?.Page?.media);
+    } catch (error) {
+      lista.innerHTML = "<p>❌ Erro ao buscar dados na TMDB.</p>";
+      console.error(error);
+    }
   }
 
-  // 🎴 Exibe os resultados como cards
-  function mostrarResultados(listaResultados) {
-    lista.innerHTML = "";
-
-    if (!listaResultados || listaResultados.length === 0) {
-      lista.innerHTML = "<p>Nenhum resultado encontrado.</p>";
+  async function buscarPorGenero(nomeGeneroPT) {
+    const idGenero = mapaGeneros[nomeGeneroPT];
+    if (!idGenero) {
+      lista.innerHTML = `<p>❌ Gênero "${nomeGeneroPT}" não reconhecido.</p>`;
       return;
     }
 
-    listaResultados.forEach(anime => {
-      const tituloAnime = anime.title.romaji || anime.title.english || "Sem título";
-      const generos = anime.genres.join(", ");
-      const imagem = anime.coverImage?.large || "";
-      const id = anime.id;
+    const url = `https://api.jikan.moe/v4/anime?genres=${idGenero}&limit=20`;
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
+      mostrarResultadosJikan(json.data);
+    } catch {
+      lista.innerHTML = "<p>❌ Erro ao buscar dados na Jikan API.</p>";
+    }
+  }
+
+  async function mostrarResultadosJikan(animes) {
+    lista.innerHTML = "";
+
+    if (!animes || animes.length === 0) {
+      lista.innerHTML = "<p>Nenhum resultado encontrado na Jikan.</p>";
+      return;
+    }
+
+    for (const anime of animes) {
+      const titulos = [anime.title, anime.title_english, anime.title_japanese].filter(Boolean);
+      const sinopsePT = await obterSinopseTMDB(titulos);
+      const sinopse = sinopsePT || anime.synopsis || "Sinopse não disponível.";
+      const sinopseCurta = sinopse.length > 140 ? sinopse.substring(0, 137) + "..." : sinopse;
+      const nota = anime.score ?? "N/A";
+      const imagem = anime.images?.jpg?.image_url || "default.jpg";
+      const idAnime = anime.mal_id;
+      const jaSalvo = watchlist.includes(idAnime);
 
       const card = document.createElement("div");
       card.classList.add("anime-card");
-
       card.innerHTML = `
-        <a href="anime.html?id=${id}" class="anime-link">
-          <img src="${imagem}" alt="${tituloAnime}">
-          <h3>${tituloAnime}</h3>
-          <p>${generos}</p>
-          <p>⭐ Nota: ${anime.averageScore ?? "N/A"}</p>
+        <a href="anime.html?id=${idAnime}" class="anime-link">
+          <img src="${imagem}" alt="${anime.title}">
+          <h3>${anime.title}</h3>
+          <p>${sinopseCurta}</p>
+          <p>⭐ Nota: ${nota}</p>
         </a>
-        <button class="btn-watchlist-icon" data-id="..." data-title="...">
-            +
+        <button class="btn-watchlist-icon ${jaSalvo ? 'ativo' : ''}" data-id="${idAnime}" data-title="${anime.title}">
+          ${jaSalvo ? "✅" : "➕"}
         </button>
       `;
 
-      lista.appendChild(card);
-    });
-
-    // 📌 Evento dos botões de Watchlist
-    document.querySelectorAll(".btn-watchlist").forEach(botao => {
-      botao.addEventListener("click", () => {
-        const id = botao.dataset.id;
-        const titulo = botao.dataset.title;
-        alert(`📌 "${titulo}" foi adicionado à sua Watchlist!`);
+      const btn = card.querySelector(".btn-watchlist-icon");
+      btn.addEventListener("click", e => {
+        e.preventDefault();
+        if (!watchlist.includes(idAnime)) {
+          watchlist.push(idAnime);
+          sessionStorage.setItem("watchlist", JSON.stringify(watchlist));
+          btn.classList.add("ativo");
+          btn.textContent = "✅";
+        }
       });
-    });
+
+      lista.appendChild(card);
+    }
   }
 });
-
-// 🌐 Consulta ao AniList API
-async function consultarAniList(query, variables) {
-  const response = await fetch("https://graphql.anilist.co", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  return await response.json();
-}

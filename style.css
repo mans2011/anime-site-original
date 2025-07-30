@@ -10,9 +10,18 @@ body {
 
 html,
 body {
-  width: 100%;
+  margin: 0;
+  padding: 0;
+  height: 100%;
   overflow-x: hidden;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+
+.menu-nav+.watchlist-wrapper {
+  min-height: 600px;
+  /* ou qualquer altura que garanta espaço */
 }
 
 /* Corrige problemas de box-sizing em todos os elementos */
@@ -102,6 +111,12 @@ header {
   border: 1px solid #00ff90;
   box-shadow: 0 0 12px rgba(0, 255, 144, 0.3);
   border-radius: 6px;
+}
+
+.dropdown.open .submenu-generos {
+  display: flex;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .dropdown:hover .submenu-generos {
@@ -254,6 +269,7 @@ header {
   transition: background-color 0.3s ease, transform 0.2s;
 }
 
+
 .btn-watchlist-icon:hover {
   background-color: #00cc70;
   transform: scale(1.1);
@@ -291,6 +307,7 @@ header {
   border-radius: 8px;
   box-shadow: 0 0 12px rgba(0, 255, 144, 0.2);
   padding: 10px;
+  display: none;
   z-index: 1000;
 }
 
@@ -800,14 +817,16 @@ h2 {
     padding-right: 0 !important;
   }
 
-.splide-carrossel {
-  width: 100vw;
-  margin: 0 auto;
-  padding: 0 10px;           /* dá um pequeno espaçamento nas laterais */
-  box-sizing: border-box;    /* garante que padding não estoure largura */
-}
+  .splide-carrossel {
+    width: 100vw;
+    margin: 0 auto;
+    padding: 0 10px;
+    /* dá um pequeno espaçamento nas laterais */
+    box-sizing: border-box;
+    /* garante que padding não estoure largura */
+  }
 
-  
+
 
   .splide__slide {
     padding: 0 !important;
@@ -890,8 +909,8 @@ h2 {
     font-size: 0.95rem;
     padding: 0 5px;
   }
-  
-  
+
+
 }
 
 /* === CELULARES PEQUENOS (até 480px) === */

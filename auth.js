@@ -6,30 +6,30 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveUsers = (users) => localStorage.setItem("users", JSON.stringify(users));
 
   // Registro
-if (registerForm) {
-  registerForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const username = document.getElementById("reg-username").value.trim();
-    const password = document.getElementById("reg-password").value.trim();
+  if (registerForm) {
+    registerForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const username = document.getElementById("reg-username").value.trim();
+      const password = document.getElementById("reg-password").value.trim();
 
-    if (!username || !password) return;
+      if (!username || !password) return;
 
-    const users = getUsers();
-    if (users[username]) {
-      alert("Usuário já existe.");
-      return;
-    }
+      const users = getUsers();
+      if (users[username]) {
+        alert("Usuário já existe.");
+        return;
+      }
 
-    users[username] = {
-      password,
-      watchlist: []
-    };
+      users[username] = {
+        password,
+        watchlist: []
+      };
 
-    saveUsers(users);
-    alert("Conta criada com sucesso!");
-    window.location.href = "login.html";
-  });
-}
+      saveUsers(users);
+      alert("Conta criada com sucesso!");
+      window.location.href = "login.html";
+    });
+  }
 
   // Login
   if (loginForm) {
@@ -40,7 +40,9 @@ if (registerForm) {
 
       const users = getUsers();
       if (users[username]?.password === password) {
-        localStorage.setItem("currentUser", username);
+        // 🔐 Corrigido: salva sessão do usuário logado
+        sessionStorage.setItem("usuarioLogado", JSON.stringify({ username }));
+
         window.location.href = "index.html";
       } else {
         alert("Usuário ou senha inválidos.");
